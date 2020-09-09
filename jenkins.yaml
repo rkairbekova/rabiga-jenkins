@@ -1,0 +1,64 @@
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-jenkins-rabiga
+  annotations:
+    # use the shared ingress-nginx
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+  - host: jenkins-demo-dev-rabiga.exchangeweb.net
+    http:
+      paths:
+      - path: /
+        backend:
+          serviceName: jenkins-master-rabiga
+          servicePort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jenkins-master-rabiga
+  labels:
+    app: jenkins-rabiga
+spec:
+  ports:
+  - port: 8080
+    name: web
+  clusterIP: None
+  selector:
+    app: jenkins-rabiga
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: jenkins-master-rabiga
+spec:
+  selector:
+    matchLabels:
+      app: jenkins-rabiga # has to match .spec.template.metadata.labels
+  serviceName: "jenkins-master-rabiga"
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: jenkins-rabiga  # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: jenkins
+        image: mshaibek/jenkins-312:latest
+        ports:
+        - containerPort: 8080
+          name: web
+        volumeMounts:
+        - name: jenkinshome-rabiga
+          mountPath: /var/jenkins_home
+  volumeClaimTemplates:
+  - metadata:
+      name: jenkinshome-rabiga
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 3Gi
